@@ -11,3 +11,5 @@ Rules that apply to more than one feature.
 ## Decisions
 
 - The app is standalone; no third-party integrations.
+- An employee may be allocated beyond 100% of their time; the over-allocation is flagged, not blocked.
+- Allocations need no approval; the resource manager decides alone.
