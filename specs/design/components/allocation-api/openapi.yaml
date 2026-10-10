@@ -1,0 +1,990 @@
+openapi: 3.0.3
+info:
+  title: Allocation API
+  version: 0.1.0
+  description: Employees, skills, engagements, staffing needs, allocations and availability.
+servers:
+  - url: /
+security:
+  - oauth2: []
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: /oauth2/authorize
+          tokenUrl: /oauth2/token
+          scopes:
+            employees:read: The caller's own employee profile and skills
+            employees:read-all: Every employee and their skills
+            employees:manage-skills: Assign or remove skills on any employee
+            employees:sync: See HR synchronisation status and start a refresh
+            skills:manage: Add or remove skills and proficiency levels
+            engagements:read: Only the engagements the caller manages
+            engagements:read-all: Every engagement
+            engagements:manage: Create, edit and close any engagement
+            staffing-needs:read-all: Every staffing need
+            staffing-needs:manage: Manage staffing needs on engagements the caller manages
+            allocations:read: The caller's own assignments
+            allocations:read-all: Every allocation and its history
+            allocations:manage: Create, change, end or remove any allocation
+            availability:read: The caller's own load and free capacity
+            availability:read-all: Every employee's load and conflicts
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, default: 20, maximum: 100 }
+    Offset:
+      name: offset
+      in: query
+      schema: { type: integer, default: 0 }
+    EngagementId:
+      name: engagementId
+      in: path
+      required: true
+      schema: { type: string }
+    EmployeeId:
+      name: employeeId
+      in: path
+      required: true
+      schema: { type: string }
+    NeedId:
+      name: needId
+      in: path
+      required: true
+      schema: { type: string }
+    AllocationId:
+      name: allocationId
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    BadRequest:
+      description: The request is invalid
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Not signed in or not permitted
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: No such record for this caller
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: integer, description: HTTP or application error code }
+        message: { type: string, description: short human-readable label }
+        description: { type: string, description: detailed explanation }
+        moreInfo: { type: string, description: URI to documentation }
+    Page:
+      type: object
+      required: [count]
+      properties:
+        count: { type: integer, description: total matching items }
+        next: { type: string, nullable: true, description: relative URI of the next page }
+        previous: { type: string, nullable: true, description: relative URI of the previous page }
+    Me:
+      type: object
+      required: [employeeId, name, email]
+      properties:
+        employeeId: { type: string }
+        name: { type: string }
+        email: { type: string }
+    Skill:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        category: { type: string }
+    SkillInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        category: { type: string }
+    SkillList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [data]
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/Skill' } }
+    ProficiencyLevel:
+      type: object
+      required: [id, name, rank]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        rank: { type: integer, description: 1 is lowest }
+    ProficiencyLevelInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, description: appended as the highest rank }
+    ProficiencyLevelList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [data]
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/ProficiencyLevel' } }
+    EmployeeSkill:
+      type: object
+      required: [skillId, skillName, levelId, levelName]
+      properties:
+        skillId: { type: string }
+        skillName: { type: string }
+        levelId: { type: string }
+        levelName: { type: string }
+    EmployeeSkillInput:
+      type: object
+      required: [skillId, levelId]
+      properties:
+        skillId: { type: string }
+        levelId: { type: string }
+    Employee:
+      type: object
+      required: [id, name, email]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        jobTitle: { type: string }
+        department: { type: string }
+        skills: { type: array, items: { $ref: '#/components/schemas/EmployeeSkill' } }
+    EmployeeList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [data]
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/Employee' } }
+    HrSyncStatus:
+      type: object
+      required: [status]
+      properties:
+        lastRunAt: { type: string, format: date-time, nullable: true }
+        status: { type: string, enum: [succeeded, failed, running, never-run] }
+        employeeCount: { type: integer }
+        message: { type: string }
+    Engagement:
+      type: object
+      required: [id, name, client, startDate, endDate, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        client: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        status: { type: string, enum: [Active, Closed] }
+        managerIds: { type: array, items: { type: string } }
+        managerNames: { type: array, items: { type: string } }
+        openNeedCount: { type: integer }
+    EngagementInput:
+      type: object
+      required: [name, client, startDate, endDate]
+      properties:
+        name: { type: string }
+        client: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        managerIds: { type: array, items: { type: string } }
+    EngagementList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [data]
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/Engagement' } }
+    StaffingNeed:
+      type: object
+      required: [id, engagementId, role, startDate, endDate, loadPercent, status]
+      properties:
+        id: { type: string }
+        engagementId: { type: string }
+        engagementName: { type: string }
+        role: { type: string }
+        skills: { type: array, items: { $ref: '#/components/schemas/Skill' } }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        loadPercent: { type: integer, description: percent of working time, 1 to 100 }
+        status: { type: string, enum: [Open, Filled] }
+    StaffingNeedInput:
+      type: object
+      required: [role, startDate, endDate, loadPercent]
+      properties:
+        role: { type: string }
+        skillIds: { type: array, items: { type: string } }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        loadPercent: { type: integer, minimum: 1, maximum: 100 }
+    StaffingNeedList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [data]
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/StaffingNeed' } }
+    Allocation:
+      type: object
+      required: [id, employeeId, engagementId, startDate, endDate, loadPercent, phase]
+      properties:
+        id: { type: string }
+        employeeId: { type: string }
+        employeeName: { type: string }
+        engagementId: { type: string }
+        engagementName: { type: string }
+        staffingNeedId: { type: string, nullable: true }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        loadPercent: { type: integer, description: percent of working time }
+        phase: { type: string, enum: [Upcoming, Current, Past] }
+    AllocationList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [data]
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/Allocation' } }
+    AllocationResult:
+      allOf:
+        - $ref: '#/components/schemas/Allocation'
+        - type: object
+          required: [overAllocated]
+          properties:
+            overAllocated: { type: boolean, description: true when the employee's total load now exceeds 100% in some period }
+            peakLoadPercent: { type: integer }
+    AllocationInput:
+      type: object
+      required: [employeeId, engagementId, startDate, endDate, loadPercent]
+      properties:
+        employeeId: { type: string }
+        engagementId: { type: string }
+        staffingNeedId: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        loadPercent: { type: integer, minimum: 1 }
+    AllocationUpdate:
+      type: object
+      properties:
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        loadPercent: { type: integer, minimum: 1 }
+    AllocationEvent:
+      type: object
+      required: [id, at, actor, text]
+      properties:
+        id: { type: string }
+        at: { type: string, format: date-time }
+        actor: { type: string }
+        text: { type: string }
+    AllocationEventList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [data]
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/AllocationEvent' } }
+    EngagementDetail:
+      allOf:
+        - $ref: '#/components/schemas/Engagement'
+        - type: object
+          properties:
+            staffingNeeds: { type: array, items: { $ref: '#/components/schemas/StaffingNeed' } }
+            allocations: { type: array, items: { $ref: '#/components/schemas/Allocation' } }
+    Candidate:
+      type: object
+      required: [employeeId, employeeName, matchScore, freeLoadPercent, fits]
+      properties:
+        employeeId: { type: string }
+        employeeName: { type: string }
+        matchingSkills: { type: array, items: { type: string } }
+        matchScore: { type: integer, description: number of required skills the employee holds }
+        freeLoadPercent: { type: integer, description: percent of working time free over the need's dates }
+        fits: { type: boolean, description: true when the need's load fits in the free capacity }
+    CandidateList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [data]
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/Candidate' } }
+    WeekLoad:
+      type: object
+      required: [weekStart, loadPercent]
+      properties:
+        weekStart: { type: string, format: date }
+        loadPercent: { type: integer, description: total allocated percent that week }
+    Availability:
+      type: object
+      required: [employeeId, employeeName, weeks, peakLoadPercent, freeLoadPercent, status]
+      properties:
+        employeeId: { type: string }
+        employeeName: { type: string }
+        weeks: { type: array, items: { $ref: '#/components/schemas/WeekLoad' } }
+        peakLoadPercent: { type: integer }
+        freeLoadPercent: { type: integer, description: 100 minus the peak, never below 0 }
+        status: { type: string, enum: [Allocated, OverAllocated, Bench] }
+    AvailabilityList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [data]
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/Availability' } }
+paths:
+  /me:
+    get:
+      operationId: getMe
+      summary: The signed-in user's employee identity
+      responses:
+        '200':
+          description: The caller
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /me/employee:
+    get:
+      operationId: getMyEmployee
+      summary: The caller's own profile and skills
+      security:
+        - oauth2: [employees:read]
+      responses:
+        '200':
+          description: The caller's employee record
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Employee' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /me/allocations:
+    get:
+      operationId: listMyAllocations
+      summary: The caller's own allocations, current, upcoming and past
+      security:
+        - oauth2: [allocations:read]
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: The caller's allocations
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AllocationList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /me/availability:
+    get:
+      operationId: getMyAvailability
+      summary: The caller's own weekly load and free capacity
+      security:
+        - oauth2: [availability:read]
+      responses:
+        '200':
+          description: The caller's availability
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Availability' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /me/engagements:
+    get:
+      operationId: listMyEngagements
+      summary: Engagements the caller manages
+      security:
+        - oauth2: [engagements:read]
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: The caller's engagements
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EngagementList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /me/engagements/{engagementId}:
+    get:
+      operationId: getMyEngagement
+      summary: One engagement the caller manages, with its needs and allocations
+      security:
+        - oauth2: [engagements:read]
+      parameters:
+        - $ref: '#/components/parameters/EngagementId'
+      responses:
+        '200':
+          description: The engagement
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EngagementDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /me/engagements/{engagementId}/staffing-needs:
+    post:
+      operationId: createMyStaffingNeed
+      summary: Add a staffing need to an engagement the caller manages
+      security:
+        - oauth2: [staffing-needs:manage]
+      parameters:
+        - $ref: '#/components/parameters/EngagementId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StaffingNeedInput' }
+      responses:
+        '201':
+          description: The created need
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StaffingNeed' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /me/staffing-needs/{needId}:
+    put:
+      operationId: updateMyStaffingNeed
+      summary: Change a need on an engagement the caller manages
+      security:
+        - oauth2: [staffing-needs:manage]
+      parameters:
+        - $ref: '#/components/parameters/NeedId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StaffingNeedInput' }
+      responses:
+        '200':
+          description: The updated need
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StaffingNeed' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      operationId: deleteMyStaffingNeed
+      summary: Remove a need on an engagement the caller manages
+      security:
+        - oauth2: [staffing-needs:manage]
+      parameters:
+        - $ref: '#/components/parameters/NeedId'
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /skills:
+    get:
+      operationId: listSkills
+      summary: The skill list
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Skills
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SkillList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      operationId: createSkill
+      summary: Add a skill
+      security:
+        - oauth2: [skills:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SkillInput' }
+      responses:
+        '201':
+          description: The created skill
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Skill' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /skills/{skillId}:
+    delete:
+      operationId: deleteSkill
+      summary: Remove a skill
+      security:
+        - oauth2: [skills:manage]
+      parameters:
+        - name: skillId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /proficiency-levels:
+    get:
+      operationId: listProficiencyLevels
+      summary: Proficiency levels, lowest first
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Levels
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProficiencyLevelList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      operationId: createProficiencyLevel
+      summary: Add a proficiency level
+      security:
+        - oauth2: [skills:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProficiencyLevelInput' }
+      responses:
+        '201':
+          description: The created level
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProficiencyLevel' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /proficiency-levels/{levelId}:
+    delete:
+      operationId: deleteProficiencyLevel
+      summary: Remove a proficiency level
+      security:
+        - oauth2: [skills:manage]
+      parameters:
+        - name: levelId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /employees:
+    get:
+      operationId: listEmployees
+      summary: Every employee, searchable by name, role, department and skill
+      security:
+        - oauth2: [employees:read-all]
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: matches name, job title or department }
+        - { name: skillId, in: query, schema: { type: string } }
+        - { name: minLevelRank, in: query, schema: { type: integer }, description: minimum proficiency rank for skillId }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Employees with their skills
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmployeeList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /employees/{employeeId}:
+    get:
+      operationId: getEmployee
+      summary: Any employee with their skills
+      security:
+        - oauth2: [employees:read-all]
+      parameters:
+        - $ref: '#/components/parameters/EmployeeId'
+      responses:
+        '200':
+          description: The employee
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Employee' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /employees/{employeeId}/skills:
+    post:
+      operationId: assignEmployeeSkill
+      summary: Give an employee a skill at a level
+      security:
+        - oauth2: [employees:manage-skills]
+      parameters:
+        - $ref: '#/components/parameters/EmployeeId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmployeeSkillInput' }
+      responses:
+        '200':
+          description: The employee with their skills
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Employee' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /employees/{employeeId}/skills/{skillId}:
+    delete:
+      operationId: removeEmployeeSkill
+      summary: Remove a skill from an employee
+      security:
+        - oauth2: [employees:manage-skills]
+      parameters:
+        - $ref: '#/components/parameters/EmployeeId'
+        - name: skillId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /hr-sync:
+    get:
+      operationId: getHrSyncStatus
+      summary: When employees were last synchronised from the HR system
+      security:
+        - oauth2: [employees:sync]
+      responses:
+        '200':
+          description: Synchronisation status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HrSyncStatus' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /hr-sync/runs:
+    post:
+      operationId: startHrSync
+      summary: Start a refresh from the HR system
+      security:
+        - oauth2: [employees:sync]
+      responses:
+        '202':
+          description: The refresh was started
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HrSyncStatus' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /engagements:
+    get:
+      operationId: listEngagements
+      summary: Every engagement
+      security:
+        - oauth2: [engagements:read-all]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [Active, Closed] } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Engagements
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EngagementList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      operationId: createEngagement
+      summary: Create an engagement
+      security:
+        - oauth2: [engagements:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EngagementInput' }
+      responses:
+        '201':
+          description: The created engagement
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Engagement' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /engagements/{engagementId}:
+    get:
+      operationId: getEngagement
+      summary: Any engagement with its needs and allocations
+      security:
+        - oauth2: [engagements:read-all]
+      parameters:
+        - $ref: '#/components/parameters/EngagementId'
+      responses:
+        '200':
+          description: The engagement
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EngagementDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      operationId: updateEngagement
+      summary: Change an engagement
+      security:
+        - oauth2: [engagements:manage]
+      parameters:
+        - $ref: '#/components/parameters/EngagementId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EngagementInput' }
+      responses:
+        '200':
+          description: The updated engagement
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Engagement' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /engagements/{engagementId}/close:
+    post:
+      operationId: closeEngagement
+      summary: Close an engagement so it takes no new allocations
+      security:
+        - oauth2: [engagements:manage]
+      parameters:
+        - $ref: '#/components/parameters/EngagementId'
+      responses:
+        '200':
+          description: The closed engagement
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Engagement' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /staffing-needs:
+    get:
+      operationId: listStaffingNeeds
+      summary: Every staffing need on every engagement
+      security:
+        - oauth2: [staffing-needs:read-all]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [Open, Filled] } }
+        - { name: engagementId, in: query, schema: { type: string } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Staffing needs
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StaffingNeedList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /staffing-needs/{needId}:
+    get:
+      operationId: getStaffingNeed
+      summary: Any staffing need
+      security:
+        - oauth2: [staffing-needs:read-all]
+      parameters:
+        - $ref: '#/components/parameters/NeedId'
+      responses:
+        '200':
+          description: The need
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StaffingNeed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /staffing-needs/{needId}/candidates:
+    get:
+      operationId: listNeedCandidates
+      summary: Employees ranked by skill match and free capacity for a need
+      security:
+        - oauth2: [allocations:manage]
+      parameters:
+        - $ref: '#/components/parameters/NeedId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Ranked candidates
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CandidateList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /allocations:
+    get:
+      operationId: listAllocations
+      summary: Every allocation
+      security:
+        - oauth2: [allocations:read-all]
+      parameters:
+        - { name: employeeId, in: query, schema: { type: string } }
+        - { name: engagementId, in: query, schema: { type: string } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Allocations
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AllocationList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      operationId: createAllocation
+      summary: Allocate an employee to an engagement; over-allocation is allowed but flagged
+      security:
+        - oauth2: [allocations:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AllocationInput' }
+      responses:
+        '201':
+          description: The allocation, with an over-allocation flag
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AllocationResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /allocations/{allocationId}:
+    get:
+      operationId: getAllocation
+      summary: Any allocation
+      security:
+        - oauth2: [allocations:read-all]
+      parameters:
+        - $ref: '#/components/parameters/AllocationId'
+      responses:
+        '200':
+          description: The allocation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Allocation' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      operationId: updateAllocation
+      summary: Change the dates or load of an allocation
+      security:
+        - oauth2: [allocations:manage]
+      parameters:
+        - $ref: '#/components/parameters/AllocationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AllocationUpdate' }
+      responses:
+        '200':
+          description: The updated allocation, with an over-allocation flag
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AllocationResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      operationId: deleteAllocation
+      summary: Remove an allocation
+      security:
+        - oauth2: [allocations:manage]
+      parameters:
+        - $ref: '#/components/parameters/AllocationId'
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /allocations/{allocationId}/end:
+    post:
+      operationId: endAllocation
+      summary: End an allocation as of today
+      security:
+        - oauth2: [allocations:manage]
+      parameters:
+        - $ref: '#/components/parameters/AllocationId'
+      responses:
+        '200':
+          description: The ended allocation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Allocation' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /allocations/{allocationId}/history:
+    get:
+      operationId: listAllocationHistory
+      summary: Change history of an allocation, newest first
+      security:
+        - oauth2: [allocations:read-all]
+      parameters:
+        - $ref: '#/components/parameters/AllocationId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: History events
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AllocationEventList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /availability:
+    get:
+      operationId: listAvailability
+      summary: Every employee's weekly load; filter by period and minimum free load
+      security:
+        - oauth2: [availability:read-all]
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: minFreeLoad, in: query, schema: { type: integer }, description: minimum free percent over the period }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Availability per employee
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AvailabilityList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /availability/over-allocated:
+    get:
+      operationId: listOverAllocated
+      summary: Employees currently above 100% in some period
+      security:
+        - oauth2: [availability:read-all]
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Over-allocated employees
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AvailabilityList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /availability/bench:
+    get:
+      operationId: listBench
+      summary: Employees with no allocation
+      security:
+        - oauth2: [availability:read-all]
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Unallocated employees
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AvailabilityList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
