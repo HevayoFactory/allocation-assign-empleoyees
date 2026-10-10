@@ -2,4 +2,8 @@
 
 ## Purpose
 
-Maintain the employee directory and each employee's skills, so staffing can match people to needs.
+Bring in the employee directory from the HR system and maintain each employee's skills, so staffing can match people to needs.
+
+## Decisions
+
+- Employees are taken from the HR system, not entered in this app.

@@ -6,14 +6,14 @@ Staffing engagements with the right employees is done by hand, so managers canno
 
 ## Solution
 
-A standalone web app where resource managers assign employees to engagements for a period at a given load, with visibility of skills, availability and conflicts for everyone involved.
+A web app, fed with employees from the HR system, where resource managers assign employees to engagements for a period at a given load, with visibility of skills, availability and conflicts for everyone involved.
 
 ## Actors
 
 - Resource manager: assigns and adjusts employee allocations across all engagements; sees all employees and their availability.
 - Engagement manager: defines the staffing needs of their engagements and sees who is assigned to them.
 - Employee: sees their own assignments and availability.
-- Administrator: maintains employees, skills and engagements reference data and user access.
+- Administrator: maintains skills and engagement reference data and user access.
 
 ## Features
 
@@ -29,5 +29,6 @@ See [Product-wide](product-wide.md).
 
 ## Out of Scope
 
-- Integration with HR, calendar or timesheet systems; the app is standalone.
+- Integration with calendar or timesheet systems.
+- Creating or editing employee master data in this app; it belongs to the HR system.
 
