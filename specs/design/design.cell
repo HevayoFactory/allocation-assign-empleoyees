@@ -1,0 +1,17 @@
+title Allocation App
+
+component allocation-webapp as "Allocation Web App" web-application
+component allocation-api as "Allocation API" service
+component allocation-db as "Allocation Database" database
+
+east user-auth as "Thunder Auth" identity-server
+south hr-service as "HR System" service
+
+north -> allocation-webapp
+north -> allocation-api
+
+allocation-webapp -> allocation-api
+allocation-webapp -> user-auth
+allocation-api -> user-auth
+allocation-api -> allocation-db
+allocation-api -> hr-service

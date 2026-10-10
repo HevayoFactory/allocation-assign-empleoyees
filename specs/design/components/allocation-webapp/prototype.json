@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 3,
+  "name": "Allocation",
+  "entryScreen": "screen.allocations",
+  "roles": [
+    { "id": "Resource Manager", "name": "Resource Manager" },
+    { "id": "Engagement Manager", "name": "Engagement Manager" },
+    { "id": "Employee", "name": "Employee" },
+    { "id": "Administrator", "name": "Administrator" }
+  ],
+  "states": [
+    { "id": "state.default", "name": "Default" },
+    { "id": "state.empty", "name": "Nothing to show" },
+    { "id": "state.validation-error", "name": "Validation errors" },
+    { "id": "state.failed", "name": "HR synchronisation failed" },
+    { "id": "state.delayed", "name": "HR synchronisation running" }
+  ],
+  "screens": [
+    { "id": "screen.allocations", "name": "Allocations", "roleIds": ["Resource Manager"] },
+    { "id": "screen.allocation-detail", "name": "Allocation detail", "roleIds": ["Resource Manager"] },
+    { "id": "screen.staffing-needs", "name": "Open staffing needs", "roleIds": ["Resource Manager"] },
+    { "id": "screen.fill-need", "name": "Fill a staffing need", "roleIds": ["Resource Manager"] },
+    { "id": "screen.availability", "name": "Availability and conflicts", "roleIds": ["Resource Manager"] },
+    { "id": "screen.employees", "name": "Employees", "roleIds": ["Resource Manager", "Administrator"] },
+    { "id": "screen.employee-detail", "name": "Employee detail", "roleIds": ["Resource Manager", "Administrator"] },
+    { "id": "screen.engagements", "name": "Engagements", "roleIds": ["Resource Manager", "Engagement Manager", "Administrator"] },
+    { "id": "screen.engagement-detail", "name": "Engagement detail", "roleIds": ["Resource Manager", "Engagement Manager", "Administrator"] },
+    { "id": "screen.engagement-edit", "name": "Edit engagement", "roleIds": ["Administrator"] },
+    { "id": "screen.skills", "name": "Skills and levels", "roleIds": ["Administrator"] },
+    { "id": "screen.hr-sync", "name": "HR synchronisation", "roleIds": ["Administrator"] },
+    { "id": "screen.my-profile", "name": "My profile", "roleIds": ["Employee"] },
+    { "id": "screen.my-assignments", "name": "My assignments", "roleIds": ["Employee"] },
+    { "id": "screen.account", "name": "Account", "roleIds": ["Resource Manager", "Engagement Manager", "Employee", "Administrator"] },
+    { "id": "screen.settings", "name": "Settings", "roleIds": ["Resource Manager", "Engagement Manager", "Employee", "Administrator"] },
+    { "id": "screen.signed-out", "name": "Signed out", "roleIds": ["Resource Manager", "Engagement Manager", "Employee", "Administrator"] }
+  ],
+  "flows": [
+    { "id": "flow.find-employees", "name": "Find employees by name or skill", "roleId": "Resource Manager",
+      "screenIds": ["screen.employees", "screen.employee-detail"] },
+    { "id": "flow.fill-need", "name": "Fill an open staffing need", "roleId": "Resource Manager",
+      "screenIds": ["screen.staffing-needs", "screen.fill-need", "screen.allocations"] },
+    { "id": "flow.manage-allocation", "name": "Change, end or review an allocation", "roleId": "Resource Manager",
+      "screenIds": ["screen.allocations", "screen.allocation-detail"] },
+    { "id": "flow.check-availability", "name": "Check availability and conflicts", "roleId": "Resource Manager",
+      "screenIds": ["screen.availability"] },
+    { "id": "flow.review-engagements", "name": "See engagements and their open needs", "roleId": "Resource Manager",
+      "screenIds": ["screen.engagements", "screen.engagement-detail"] },
+    { "id": "flow.state-needs", "name": "State the staffing needs of my engagement", "roleId": "Engagement Manager",
+      "screenIds": ["screen.engagements", "screen.engagement-detail"] },
+    { "id": "flow.maintain-engagements", "name": "Create, edit and close an engagement", "roleId": "Administrator",
+      "screenIds": ["screen.engagements", "screen.engagement-edit", "screen.engagement-detail"] },
+    { "id": "flow.assign-skills", "name": "Assign skills to an employee", "roleId": "Administrator",
+      "screenIds": ["screen.employees", "screen.employee-detail"] },
+    { "id": "flow.maintain-skills", "name": "Maintain skills and levels", "roleId": "Administrator",
+      "screenIds": ["screen.skills"] },
+    { "id": "flow.sync-hr", "name": "Check and refresh HR data", "roleId": "Administrator",
+      "screenIds": ["screen.hr-sync"] },
+    { "id": "flow.my-profile", "name": "View my profile and skills", "roleId": "Employee",
+      "screenIds": ["screen.my-profile"] },
+    { "id": "flow.my-assignments", "name": "See my assignments and free capacity", "roleId": "Employee",
+      "screenIds": ["screen.my-assignments"] }
+  ]
+}

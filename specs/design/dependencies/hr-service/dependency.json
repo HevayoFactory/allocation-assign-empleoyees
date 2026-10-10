@@ -1,0 +1,7 @@
+{
+  "name": "hr-service",
+  "resource": {
+    "name": "hr-service",
+    "description": "The organization's internal HR system: the source of truth for employee records (id, name, email, job title, department)."
+  }
+}

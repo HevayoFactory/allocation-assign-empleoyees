@@ -1,0 +1,106 @@
+{
+  "version": 3,
+  "permissions": [
+    {
+      "resource": "employees",
+      "component": "allocation-api",
+      "description": "Employees synchronised from the HR system and their skills",
+      "actions": [
+        { "handle": "read", "description": "The caller's own employee profile and skills" },
+        { "handle": "read-all", "description": "Every employee and their skills" },
+        { "handle": "manage-skills", "description": "Assign or remove skills and levels on any employee" },
+        { "handle": "sync", "description": "See the HR synchronisation status and start a refresh" }
+      ]
+    },
+    {
+      "resource": "skills",
+      "component": "allocation-api",
+      "description": "The skill list and proficiency levels",
+      "actions": [
+        { "handle": "manage", "description": "Add or remove skills and proficiency levels" }
+      ]
+    },
+    {
+      "resource": "engagements",
+      "component": "allocation-api",
+      "description": "Engagements",
+      "actions": [
+        { "handle": "read", "description": "Only the engagements the caller manages, with their needs and allocations" },
+        { "handle": "read-all", "description": "Every engagement, with its needs and allocations" },
+        { "handle": "manage", "description": "Create, edit and close any engagement" }
+      ]
+    },
+    {
+      "resource": "staffing-needs",
+      "component": "allocation-api",
+      "description": "What each engagement needs staffed",
+      "actions": [
+        { "handle": "read-all", "description": "Every staffing need on every engagement" },
+        { "handle": "manage", "description": "Add, change or remove staffing needs on engagements the caller manages" }
+      ]
+    },
+    {
+      "resource": "allocations",
+      "component": "allocation-api",
+      "description": "Employees assigned to engagements",
+      "actions": [
+        { "handle": "read", "description": "The caller's own assignments" },
+        { "handle": "read-all", "description": "Every allocation and its change history" },
+        { "handle": "manage", "description": "Create, change, end or remove any allocation, and rank candidates for a need" }
+      ]
+    },
+    {
+      "resource": "availability",
+      "component": "allocation-api",
+      "description": "Load, free capacity and conflicts",
+      "actions": [
+        { "handle": "read", "description": "The caller's own load and free capacity" },
+        { "handle": "read-all", "description": "Every employee's load, over-allocation and bench" }
+      ]
+    }
+  ],
+  "groups": [
+    { "name": "Resource Managers", "description": "People who staff engagements" },
+    { "name": "Engagement Managers", "description": "People who lead engagements" },
+    { "name": "Employees", "description": "Everyone who can be allocated to an engagement" },
+    { "name": "Allocation Admins", "description": "People who maintain reference data for the allocation app" }
+  ],
+  "roles": [
+    {
+      "name": "Resource Manager",
+      "description": "Assigns employees to engagements, changes and ends allocations, and checks availability and conflicts across everyone. Sees every employee, engagement and need. Never edits skills, engagements or HR data.",
+      "stories": ["F1.1", "F1.2", "F2.5", "F3.1", "F3.2", "F3.3", "F3.4", "F3.5", "F3.7", "F4.1", "F4.2", "F4.3", "F4.4", "F4.5"],
+      "grants": ["employees:read-all", "engagements:read-all", "staffing-needs:read-all", "allocations:read-all", "allocations:manage", "availability:read-all"],
+      "assignTo": ["Resource Managers"]
+    },
+    {
+      "name": "Engagement Manager",
+      "description": "States the staffing needs of the engagements they manage and sees who is allocated to them. Sees no other engagement and cannot allocate anyone.",
+      "stories": ["F2.2", "F2.3", "F2.4", "F3.6"],
+      "grants": ["engagements:read", "staffing-needs:manage"],
+      "assignTo": ["Engagement Managers"]
+    },
+    {
+      "name": "Employee",
+      "description": "Sees their own profile, assignments and free capacity. Sees nobody else's.",
+      "stories": ["F1.5", "F5.1", "F5.2", "F5.3"],
+      "grants": ["employees:read", "allocations:read", "availability:read"],
+      "assignTo": ["Employees"]
+    },
+    {
+      "name": "Administrator",
+      "description": "Maintains skills, proficiency levels, employee skills and engagements, and triggers the HR refresh. Does not allocate employees.",
+      "stories": ["F1.3", "F1.4", "F1.6", "F2.1", "F2.6"],
+      "grants": ["employees:read-all", "employees:manage-skills", "employees:sync", "skills:manage", "engagements:read-all", "engagements:manage"],
+      "assignTo": ["Allocation Admins"]
+    }
+  ],
+  "testUsers": [
+    { "username": "test-resource-manager", "roles": ["Resource Manager"] },
+    { "username": "test-engagement-manager", "roles": ["Engagement Manager"] },
+    { "username": "test-engagement-manager-2", "roles": ["Engagement Manager"] },
+    { "username": "test-employee", "roles": ["Employee"] },
+    { "username": "test-employee-2", "roles": ["Employee"] },
+    { "username": "test-administrator", "roles": ["Administrator"] }
+  ]
+}
