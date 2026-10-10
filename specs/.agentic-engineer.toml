@@ -1,0 +1,4 @@
+apiVersion = "agentic-engineer/v1"
+name = "allocation-assign-empleoyees"
+createdAt = "2026-10-10T14:41:13Z"
+idea = "I want to build an allocation app that assign empleoyees to enguagements"
