@@ -17,6 +17,6 @@ Needs: F1.
 
 ## Decisions
 
-- An engagement has one or more engagement managers.
+- An engagement has one or more engagement managers, chosen from the employees by the administrator when creating or editing the engagement. *assumed*
 - A staffing need is filled when allocations cover its dates and load.
 

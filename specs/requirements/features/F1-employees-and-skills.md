@@ -17,4 +17,5 @@ Bring in the employee directory from the HR system and maintain each employee's 
 
 - Employees are taken from the HR system, not entered in this app.
 - Employee records are synchronised from the HR system and are read-only here; only skills are maintained in this app.
+- A signed-in user is matched to their employee record by email address. *assumed*
 
